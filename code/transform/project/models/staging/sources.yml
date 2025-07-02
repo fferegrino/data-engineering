@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: futbol_db
+    database: futbol_db
+    schema: public
+    tables:
+      - name: landing_mediotiempo_torneo_regular
+        identifier: landing_mediotiempo_torneo_regular
+        description: "Raw data from Mediotiempo about the regular season of the tournaments"

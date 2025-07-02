@@ -1,0 +1,41 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  REGISTRY_URL: localhost:5001
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+#      - name: Login to Docker Registry
+#        uses: docker/login-action@v3
+#        with:
+#          registry: ${{ env.REGISTRY_URL }}
+#          username: ${{ secrets.DOCKER_USERNAME }}
+#          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push DBT image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./code/transform
+          file: ./code/transform/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY_URL }}/dbt_futbol:latest
+
+      - name: Build and push Python image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./code/extract-load
+          file: ./code/extract-load/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY_URL }}/python_futbol:latest

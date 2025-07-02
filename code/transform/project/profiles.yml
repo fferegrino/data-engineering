@@ -1,0 +1,12 @@
+futbol_analysis:
+  outputs:
+    dev:
+      dbname: futbol_db
+      host: postgres
+      pass: superuser_password
+      port: 5432
+      schema: public
+      threads: 1
+      type: postgres
+      user: superuser
+  target: dev

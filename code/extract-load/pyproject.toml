@@ -1,0 +1,20 @@
+[project]
+name = "mediotiempo-data"
+version = "0.1.0"
+description = "Add your description here"
+readme = "readme.md"
+authors = [
+    { name = "Antonio Feregrino", email = "antonio.feregrino@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "psycopg2-binary>=2.9.10",
+    "requests>=2.32.3",
+]
+
+[project.scripts]
+mediotiempo-data = "mediotiempo_data:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

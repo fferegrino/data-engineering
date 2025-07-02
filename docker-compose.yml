@@ -1,0 +1,130 @@
+version: '3.7'
+services:
+
+  registry:
+    image: registry:2
+    restart: always
+    ports:
+      - "5001:5000"  # Expose the registry on port 5000
+    environment:
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+    volumes:
+      - registry_data:/var/lib/registry
+
+  registry-ui:
+    image: joxit/docker-registry-ui:main
+    restart: always
+    ports:
+      - 8081:80
+    environment:
+      - SINGLE_REGISTRY=true
+      - REGISTRY_TITLE=Docker Registry UI
+      - DELETE_IMAGES=true
+      - SHOW_CONTENT_DIGEST=true
+      - NGINX_PROXY_PASS_URL=http://registry:5000
+      - SHOW_CATALOG_NB_TAGS=true
+      - CATALOG_MIN_BRANCHES=1
+      - CATALOG_MAX_BRANCHES=1
+      - TAGLIST_PAGE_SIZE=100
+      - REGISTRY_SECURED=false
+      - CATALOG_ELEMENTS_LIMIT=1000
+    container_name: registry-ui
+
+  postgres:
+    image: postgres:14
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./infra/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  airflow-webserver:
+    image: apache/airflow:2.7.3
+    container_name: airflow_webserver
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@postgres/airflow_db
+    env_file:
+      - .env
+    volumes:
+      - ./infra/airflow/dags:/opt/airflow/dags
+      - ./infra/airflow/requirements.txt:/requirements.txt
+    entrypoint: >
+      /bin/bash -c "
+      pip install -r /requirements.txt &&
+      airflow db init &&
+      airflow users create --username $${AIRFLOW__USERS__USERNAME} --firstname $${AIRFLOW__USERS__FIRSTNAME} --lastname $${AIRFLOW__USERS__LASTNAME} --role $${AIRFLOW__USERS__ROLE} --email $${AIRFLOW__USERS__EMAIL} --password $${AIRFLOW__USERS__PASSWORD} &&
+      airflow webserver
+      "
+    ports:
+      - "8080:8080"
+
+
+  airflow-scheduler:
+    image: apache/airflow:2.7.3
+    container_name: airflow_scheduler
+    restart: always
+    depends_on:
+      - airflow-webserver
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@postgres/airflow_db
+    env_file:
+      - .env
+    volumes:
+      - ./infra/airflow/dags:/opt/airflow/dags
+    entrypoint: /bin/bash -c "airflow scheduler"
+
+  dind:
+    image: docker:dind
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    ports:
+      - "2375:2375"
+    volumes:
+      - ./infra/dind/daemon.json:/etc/docker/daemon.json
+      - /var/lib/docker
+
+  sqlpad:
+    image: sqlpad/sqlpad:latest
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - SQLPAD_ADMIN=admin
+      - SQLPAD_ADMIN_PASSWORD=admin_password
+      - SQLPAD_DB_PATH=/var/lib/sqlpad/db
+      - SQLPAD_CONNECTIONS__futbol_db__name="Futbol DB"
+      - SQLPAD_CONNECTIONS__futbol_db__driver=postgres
+      - SQLPAD_CONNECTIONS__futbol_db__host=postgres
+      - SQLPAD_CONNECTIONS__futbol_db__port=5432
+      - SQLPAD_CONNECTIONS__futbol_db__username=superuser
+      - SQLPAD_CONNECTIONS__futbol_db__password=superuser_password
+      - SQLPAD_CONNECTIONS__futbol_db__database=futbol_db
+      - SQLPAD_CONNECTIONS__airflow_db__name="Airflow DB"
+      - SQLPAD_CONNECTIONS__airflow_db__driver=postgres
+      - SQLPAD_CONNECTIONS__airflow_db__host=postgres
+      - SQLPAD_CONNECTIONS__airflow_db__port=5432
+      - SQLPAD_CONNECTIONS__airflow_db__username=superuser
+      - SQLPAD_CONNECTIONS__airflow_db__password=superuser_password
+      - SQLPAD_CONNECTIONS__airflow_db__database=airflow_db
+    volumes:
+      - sqlpad_data:/var/lib/sqlpad
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  registry_data:
+  sqlpad_data:
