@@ -45,6 +45,38 @@ services:
       timeout: 5s
       retries: 5
 
+  sqlpad:
+    image: sqlpad/sqlpad:latest
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - SQLPAD_ADMIN=admin
+      - SQLPAD_ADMIN_PASSWORD=admin_password
+      - SQLPAD_DB_PATH=/var/lib/sqlpad/db
+
+      - SQLPAD_CONNECTIONS__futbol_db__name="Futbol DB"
+      - SQLPAD_CONNECTIONS__futbol_db__driver=postgres
+      - SQLPAD_CONNECTIONS__futbol_db__host=postgres
+      - SQLPAD_CONNECTIONS__futbol_db__port=5432
+      - SQLPAD_CONNECTIONS__futbol_db__username=superuser
+      - SQLPAD_CONNECTIONS__futbol_db__password=superuser_password
+      - SQLPAD_CONNECTIONS__futbol_db__database=futbol_db
+
+      - SQLPAD_CONNECTIONS__airflow_db__name="Airflow DB"
+      - SQLPAD_CONNECTIONS__airflow_db__driver=postgres
+      - SQLPAD_CONNECTIONS__airflow_db__host=postgres
+      - SQLPAD_CONNECTIONS__airflow_db__port=5432
+      - SQLPAD_CONNECTIONS__airflow_db__username=superuser
+      - SQLPAD_CONNECTIONS__airflow_db__password=superuser_password
+      - SQLPAD_CONNECTIONS__airflow_db__database=airflow_db
+
+    volumes:
+      - sqlpad_data:/var/lib/sqlpad
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   airflow-webserver:
     image: apache/airflow:2.7.3
     container_name: airflow_webserver
@@ -69,7 +101,6 @@ services:
       "
     ports:
       - "8080:8080"
-
 
   airflow-scheduler:
     image: apache/airflow:2.7.3
@@ -96,34 +127,6 @@ services:
       - ./infra/dind/daemon.json:/etc/docker/daemon.json
       - /var/lib/docker
 
-  sqlpad:
-    image: sqlpad/sqlpad:latest
-    restart: always
-    ports:
-      - "3000:3000"
-    environment:
-      - SQLPAD_ADMIN=admin
-      - SQLPAD_ADMIN_PASSWORD=admin_password
-      - SQLPAD_DB_PATH=/var/lib/sqlpad/db
-      - SQLPAD_CONNECTIONS__futbol_db__name="Futbol DB"
-      - SQLPAD_CONNECTIONS__futbol_db__driver=postgres
-      - SQLPAD_CONNECTIONS__futbol_db__host=postgres
-      - SQLPAD_CONNECTIONS__futbol_db__port=5432
-      - SQLPAD_CONNECTIONS__futbol_db__username=superuser
-      - SQLPAD_CONNECTIONS__futbol_db__password=superuser_password
-      - SQLPAD_CONNECTIONS__futbol_db__database=futbol_db
-      - SQLPAD_CONNECTIONS__airflow_db__name="Airflow DB"
-      - SQLPAD_CONNECTIONS__airflow_db__driver=postgres
-      - SQLPAD_CONNECTIONS__airflow_db__host=postgres
-      - SQLPAD_CONNECTIONS__airflow_db__port=5432
-      - SQLPAD_CONNECTIONS__airflow_db__username=superuser
-      - SQLPAD_CONNECTIONS__airflow_db__password=superuser_password
-      - SQLPAD_CONNECTIONS__airflow_db__database=airflow_db
-    volumes:
-      - sqlpad_data:/var/lib/sqlpad
-    depends_on:
-      postgres:
-        condition: service_healthy
 
 volumes:
   registry_data:
